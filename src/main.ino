@@ -11,6 +11,8 @@
 ////////////////////////////////////////////////////////////////////////
 // Frameworks
 #include <Adafruit_SSD1306.h>
+#include <ArduinoJson.h>  // Json Library
+#include <EEPROM.h>
 #include <OneButton.h>
 #include <PubSubClient.h>
 #include <WiFiClient.h>
@@ -56,6 +58,8 @@
 #define SCREEN_HEIGHT 32
 #define OLED_RESET 4
 
+#define EEPROM_SIZE 1
+
 ////////////////////////////////////////////////////////////////////////
 //
 //  #     #
@@ -73,9 +77,11 @@ PubSubClient mqtt(espClient);
 // LED Strip
 CRGB currentLED[totalLEDs];
 
+// * Processor Core tasks
 TaskHandle_t Task1;
 TaskHandle_t Task2;
 
+// * Buttons
 OneButton leftButton(leftButtonPin, true);
 OneButton rightButton(rightButtonPin, true);
 OneButton upButton(upButtonPin, true);
@@ -84,9 +90,6 @@ OneButton acceptButton(acceptButtonPin, true);
 
 // * Screen
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-
-// * ADC
-Adafruit_ADS1115 ads;
 
 ////////////////////////////////////////////////////////////////////////
 //
@@ -99,7 +102,7 @@ Adafruit_ADS1115 ads;
 //     #    #    # #    # # #    # #####  ###### ######  ####
 //
 ////////////////////////////////////////////////////////////////////////
-int LEDBrightness = 25;  // As a percentage (saved as a dynamic variable to let us change later)
+int LEDBrightness = 100;  // As a percentage (saved as a dynamic variable to let us change later)
 
 const char* wifiSsid = "I Don't Mind";
 const char* wifiPassword = "Have2Biscuits";
@@ -116,7 +119,19 @@ long connectionTimeout = (2 * 1000);
 long lastWiFiReconnectAttempt = 0;
 long lastMQTTReconnectAttempt = 0;
 
-int mode = 5;
+int menu = 0;  // Menu needs to start at 0 to prevent crashing when trying to draw to oled
+int lastMenu = 0;
+int page = 0;
+int maxMenus = 4;
+
+int address = 0;
+bool startup = true;
+
+enum Menus { start,
+             manual,
+             off,
+             remote,
+             addr };
 
 ////////////////////////////////////////////////////////////////////////
 //
@@ -156,6 +171,10 @@ void setup() {
   startWifi();
   startMQTT();
   startScreen();
+
+  EEPROM.begin(EEPROM_SIZE);
+  address = EEPROM.read(0);
+  Serial << "Address: " << address << endl;
 
   // On-board status led (Used for wifi and MQTT indication)
   pinMode(connectionLED, OUTPUT);
@@ -204,115 +223,127 @@ void setup() {
 //////////////////////////////////////////////////////////////////////
 void core1Loop(void* pvParameters) {
   for (;;) {
-    // handleMQTT();
+    handleMQTT();
     handleWiFi();
-    // delay(500);  // * Add this back if WDT issues come back
+    if (startup) {
+      delay(500);  // * Add this back if WDT issues come back
+      startup = false;
+    }
   }
 }
 
 void core2Loop(void* pvParameters) {
   for (;;) {
+    yield();
     upButton.tick();
     downButton.tick();
     leftButton.tick();
     rightButton.tick();
     acceptButton.tick();
 
-    int lim = 250;
-    int potMax = 3500;
-    int red = 0;
-    int blue = 0;
-    int green = 0;
-    int redPercentage, greenPercentage, bluePercentage;
+    switch (menu) {
+      case manual:
+        middleText(F("Manual"));
+        manualMode();
+        lastMenu = menu;
+        break;
 
-    int redRaw = analogRead(redPot);
-    int greenRaw = analogRead(greenPot);
-    int blueRaw = analogRead(bluePot);
+      case off:
+        middleText(F("Off"));
+        for (int i = 0; i < totalLEDs; i++) {
+          currentLED[i].setRGB(0, 0, 0);
+          // currentLED[i].setRGB(map(redPercentage, 0, 100, 0, 255), map(greenPercentage, 0, 100, 0, 255), map(bluePercentage, 0, 100, 0, 255));
+        }
+        FastLED.show();
+        lastMenu = menu;
+        break;
 
-    if (redRaw < lim) {
-      red = 0;
-    } else if (redRaw > potMax) {
-      red = potMax;
-    } else {
-      red = redRaw;
+      case remote:
+        middleText(F("Remote"));
+        if (lastMenu != menu) {
+          for (int i = 0; i < totalLEDs; i++) {
+            currentLED[i].setRGB(0, 0, 0);
+          }
+          FastLED.show();
+        }
+        lastMenu = menu;
+        break;
+
+      case addr:
+        if (lastMenu != menu) {
+          middleText(F("Address"));
+          delay(1000);
+        }
+
+        middleText(String(address));
+        for (int i = 0; i < totalLEDs; i++) {
+          currentLED[i].setRGB(0, 0, 0);
+          // currentLED[i].setRGB(map(redPercentage, 0, 100, 0, 255), map(greenPercentage, 0, 100, 0, 255), map(bluePercentage, 0, 100, 0, 255));
+        }
+        FastLED.show();
+        lastMenu = menu;
+        break;
     }
-
-    if (blueRaw < lim) {
-      blue = 0;
-    } else if (blueRaw > potMax) {
-      blue = potMax;
-    } else {
-      blue = blueRaw;
-    }
-
-    if (greenRaw < lim) {
-      green = 0;
-    } else if (greenRaw > potMax) {
-      green = potMax;
-    } else {
-      green = greenRaw;
-    }
-
-    redPercentage = map(red, 0, potMax, 0, 100);
-    greenPercentage = map(green, 0, potMax, 0, 100);
-    bluePercentage = map(blue, 0, potMax, 0, 100);
-
-    int finalRed = map(redPercentage, 0, 100, 0, 255);
-    int finalGreen = map(greenPercentage, 0, 100, 0, 255);
-    int finalBlue = map(bluePercentage, 0, 100, 0, 255);
-
-    Serial << "Red: " << finalRed << " "
-           << "Green: " << finalGreen << " "
-           << "Blue: " << finalBlue << endl
-           << endl;
-
-    for (int i = 0; i < totalLEDs; i++) {
-      currentLED[i].setRGB(finalRed, finalGreen, finalBlue);
-      // currentLED[i].setRGB(map(redPercentage, 0, 100, 0, 255), map(greenPercentage, 0, 100, 0, 255), map(bluePercentage, 0, 100, 0, 255));
-    }
-
-    FastLED.show();
-
-    // if (WiFi.status() == WL_CONNECTED) {
-    //   switch (mode) {
-    //     case 0:  // Off
-    //       FastLED.clear();
-    //       FastLED.show();
-    //       delay(5);
-    //       break;
-
-    //     case 1:
-    //       fire.run(55, 120, 20, true);
-    //       break;
-
-    //     case 2:
-    //       colourFade.run();
-    //       break;
-
-    //     case 3:
-    //       colourCycle.run();
-    //       break;
-
-    //     case 4:
-    //       meteorRain(0xff, 0xff, 0x00, 10, 64, true, 30);
-    //       break;
-
-    //     case 5:
-    //       rainbow.run();
-    //       // rainbowCycle(20);
-    //       break;
-
-    //     case 6:
-    //       EVERY_N_MILLISECONDS(20) {
-    //         pacifica_loop();
-    //         FastLED.show();
-    //         delay(5);
-    //       }
-    //       break;
-    //   }
     delay(20);
   }
 }
 
 void loop() {
+}
+
+void manualMode() {
+  int lim = 250;
+  int potMax = 3500;
+  int red = 0;
+  int blue = 0;
+  int green = 0;
+  int redPercentage, greenPercentage, bluePercentage;
+
+  int redRaw = analogRead(redPot);
+  int greenRaw = analogRead(greenPot);
+  int blueRaw = analogRead(bluePot);
+
+  if (redRaw < lim) {
+    red = 0;
+  } else if (redRaw > potMax) {
+    red = potMax;
+  } else {
+    red = redRaw;
+  }
+
+  if (blueRaw < lim) {
+    blue = 0;
+  } else if (blueRaw > potMax) {
+    blue = potMax;
+  } else {
+    blue = blueRaw;
+  }
+
+  if (greenRaw < lim) {
+    green = 0;
+  } else if (greenRaw > potMax) {
+    green = potMax;
+  } else {
+    green = greenRaw;
+  }
+
+  redPercentage = map(red, 0, potMax, 0, 100);
+  greenPercentage = map(green, 0, potMax, 0, 100);
+  bluePercentage = map(blue, 0, potMax, 0, 100);
+
+  int finalRed = map(redPercentage, 0, 100, 0, 255);
+  int finalGreen = map(greenPercentage, 0, 100, 0, 255);
+  int finalBlue = map(bluePercentage, 0, 100, 0, 255);
+
+  // Serial << "Red: " << finalRed << " "
+  //        << "Green: " << finalGreen << " "
+  //        << "Blue: " << finalBlue << endl
+  //        << endl;
+
+  for (int i = 0; i < totalLEDs; i++) {
+    currentLED[i].setRGB(finalRed, finalGreen, finalBlue);
+    // currentLED[i].setRGB(map(redPercentage, 0, 100, 0, 255), map(greenPercentage, 0, 100, 0, 255), map(bluePercentage, 0, 100, 0, 255));
+  }
+
+  FastLED.show();
 }

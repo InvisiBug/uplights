@@ -11,6 +11,11 @@
 ///////////////////////////////////////////////////////////////////////
 void upButtonClicked() {
   Serial << "Up Button Clicked" << endl;
+  if (menu < maxMenus) {
+    menu++;
+  } else {
+    menu = 1;
+  }
 }
 
 void upButtonHeld() {
@@ -29,6 +34,11 @@ void upButtonHeld() {
 ///////////////////////////////////////////////////////////////////////
 void downButtonClicked() {
   Serial << "Down Button Clicked" << endl;
+  if (menu > 1) {
+    menu--;
+  } else {
+    menu = maxMenus;
+  }
 }
 
 void downButtonHeld() {
@@ -47,6 +57,15 @@ void downButtonHeld() {
 ///////////////////////////////////////////////////////////////////////
 void leftButtonClicked() {
   Serial << "Left Button Clicked" << endl;
+  if (menu == addr) {
+    if (address > 0) {
+      address--;
+    } else {
+      address = 100;
+    }
+    EEPROM.write(0, address);
+    EEPROM.commit();
+  }
 }
 
 void leftButtonHeld() {
@@ -65,6 +84,15 @@ void leftButtonHeld() {
 ///////////////////////////////////////////////////////////////////////
 void rightButtonClicked() {
   Serial << "Right button clicked" << endl;
+  if (menu == addr) {
+    if (address < 100) {
+      address++;
+    } else {
+      address = 0;
+    }
+    EEPROM.write(0, address);
+    EEPROM.commit();
+  }
 }
 
 void rightButtonHeld() {

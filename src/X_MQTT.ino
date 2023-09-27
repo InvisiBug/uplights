@@ -50,13 +50,29 @@ void handleMQTT() {
 
 void messageReceived(char* topic, byte* payload, unsigned int length) {
   printMessage(payload, length);
-  mode = (int)payload[0] - 48;  // Stupid ascii I think
 
-  // Serial << mode << endl;
-  // Wire.beginTransmission(1);
-  // // Wire.write((char)payload[0]);
-  // Wire.write((char)payload[0]);
-  // Wire.endTransmission();
+  if (menu == remote) {
+    DynamicJsonDocument doc(5124);
+
+    DeserializationError error = deserializeJson(doc, payload);
+
+    if (error) {
+      Serial.print("deserializeJson() failed: ");
+      Serial.println(error.c_str());
+      return;
+    }
+
+    JsonArray root_0 = doc[address];
+    int red = root_0[0];
+    int green = root_0[1];
+    int blue = root_0[2];
+
+    for (int i = 0; i < totalLEDs; i++) {
+      currentLED[i].setRGB(red, green, blue);
+    }
+
+    FastLED.show();
+  }
 }
 
 void printMessage(byte* payload, int length) {
@@ -78,5 +94,5 @@ void printMessage(byte* payload, int length) {
 //
 ////////////////////////////////////////////////////////////////////////
 void subscribeToTopics() {
-  mqtt.subscribe("Hexagon Lights Control");
+  mqtt.subscribe("Uplight Control");
 }
