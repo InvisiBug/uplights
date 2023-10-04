@@ -44,7 +44,7 @@ void debugText(String text) {
 }
 
 int middle(int textWidth) {
-  // Can show a total of 10 characters
+  //? Can show a total of 10 characters
   int screenWidth = display.width();
   int charWidth = 12;
 

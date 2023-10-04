@@ -1,3 +1,30 @@
+void startButtons() {
+  upButton.attachClick(upButtonClicked);
+  upButton.setDebounceTicks(50);
+  upButton.attachLongPressStart(upButtonHeld);
+  upButton.setPressTicks(250);
+
+  downButton.attachClick(downButtonClicked);
+  downButton.setDebounceTicks(50);
+  downButton.attachLongPressStart(downButtonHeld);
+  downButton.setPressTicks(250);
+
+  leftButton.attachClick(leftButtonClicked);
+  leftButton.setDebounceTicks(50);
+  leftButton.attachLongPressStart(leftButtonHeld);
+  leftButton.setPressTicks(250);
+
+  rightButton.attachClick(rightButtonClicked);
+  rightButton.setDebounceTicks(50);
+  rightButton.attachLongPressStart(rightButtonHeld);
+  rightButton.setPressTicks(250);
+
+  acceptButton.attachClick(acceptButtonClicked);
+  acceptButton.setDebounceTicks(50);
+  acceptButton.attachLongPressStart(acceptButtonHeld);
+  acceptButton.setPressTicks(250);
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 //  ######                                        #
@@ -11,7 +38,7 @@
 ///////////////////////////////////////////////////////////////////////
 void upButtonClicked() {
   Serial << "Up Button Clicked" << endl;
-  if (menu < maxMenus) {
+  if (menu < addr) {
     menu++;
   } else {
     menu = 1;
@@ -34,10 +61,10 @@ void upButtonHeld() {
 ///////////////////////////////////////////////////////////////////////
 void downButtonClicked() {
   Serial << "Down Button Clicked" << endl;
-  if (menu > 1) {
+  if (menu > start) {
     menu--;
   } else {
-    menu = maxMenus;
+    menu = addr;
   }
 }
 

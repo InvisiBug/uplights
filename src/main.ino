@@ -41,15 +41,15 @@
 
 #define dataPin 23  // ESP32
 
-#define upButtonPin 15
-#define downButtonPin 4
-#define leftButtonPin 5
-#define rightButtonPin 18
-#define acceptButtonPin 19
+#define upButtonPin 16
+#define downButtonPin 17
+#define leftButtonPin 0
+#define rightButtonPin 12
+#define acceptButtonPin 4
 
-#define redPot 32
-#define greenPot 39
-#define bluePot 36
+#define redPot 34
+#define greenPot 35
+#define bluePot 39
 
 #define OFF LOW
 #define ON HIGH
@@ -122,7 +122,6 @@ long lastMQTTReconnectAttempt = 0;
 int menu = 0;  // Menu needs to start at 0 to prevent crashing when trying to draw to oled
 int lastMenu = 0;
 int page = 0;
-int maxMenus = 4;
 
 int address = 0;
 bool startup = true;
@@ -147,7 +146,7 @@ enum Menus { start,
 void setup() {
   Serial.begin(115200);
 
-  // System architecture, dual core stuff
+  //* System architecture, dual core stuff
   xTaskCreatePinnedToCore(core1Loop, "Task1", 10000, NULL, 1, &Task1, 0);
   delay(500);
 
@@ -157,7 +156,7 @@ void setup() {
   disableCore0WDT();  // This prevents the WDT taking out an idle core
   disableCore1WDT();  // the wifi code was triggering the WDT
 
-  // LEDs
+  //* LEDs
   FastLED.addLeds<NEOPIXEL, dataPin>(currentLED, totalLEDs);
 
   FastLED.setBrightness(LEDBrightness * 2.55);
@@ -167,44 +166,21 @@ void setup() {
   FastLED.clear();  // clear all pixel data
   FastLED.show();
 
-  // Wireless comms
+  //* Start hardware
   startWifi();
   startMQTT();
   startScreen();
+  startButtons();
 
+  //* Enable EEPROM
   EEPROM.begin(EEPROM_SIZE);
   address = EEPROM.read(0);
   Serial << "Address: " << address << endl;
 
-  // On-board status led (Used for wifi and MQTT indication)
+  //* Enable pins
   pinMode(connectionLED, OUTPUT);
   pinMode(redPot, INPUT_PULLUP);
   pinMode(bluePot, INPUT_PULLUP);
-
-  upButton.attachClick(upButtonClicked);
-  upButton.setDebounceTicks(50);
-  upButton.attachLongPressStart(upButtonHeld);
-  upButton.setPressTicks(250);
-
-  downButton.attachClick(downButtonClicked);
-  downButton.setDebounceTicks(50);
-  downButton.attachLongPressStart(downButtonHeld);
-  downButton.setPressTicks(250);
-
-  leftButton.attachClick(leftButtonClicked);
-  leftButton.setDebounceTicks(50);
-  leftButton.attachLongPressStart(leftButtonHeld);
-  leftButton.setPressTicks(250);
-
-  rightButton.attachClick(rightButtonClicked);
-  rightButton.setDebounceTicks(50);
-  rightButton.attachLongPressStart(rightButtonHeld);
-  rightButton.setPressTicks(250);
-
-  acceptButton.attachClick(acceptButtonClicked);
-  acceptButton.setDebounceTicks(50);
-  acceptButton.attachLongPressStart(acceptButtonHeld);
-  acceptButton.setPressTicks(250);
 
   Serial << "\n|** " << nodeName << " **|" << endl;
   delay(100);
@@ -250,20 +226,17 @@ void core2Loop(void* pvParameters) {
 
       case off:
         middleText(F("Off"));
-        for (int i = 0; i < totalLEDs; i++) {
-          currentLED[i].setRGB(0, 0, 0);
-          // currentLED[i].setRGB(map(redPercentage, 0, 100, 0, 255), map(greenPercentage, 0, 100, 0, 255), map(bluePercentage, 0, 100, 0, 255));
+        if (lastMenu != menu) {
+          FastLED.clear();
+          FastLED.show();
         }
-        FastLED.show();
         lastMenu = menu;
         break;
 
       case remote:
         middleText(F("Remote"));
         if (lastMenu != menu) {
-          for (int i = 0; i < totalLEDs; i++) {
-            currentLED[i].setRGB(0, 0, 0);
-          }
+          FastLED.clear();
           FastLED.show();
         }
         lastMenu = menu;
@@ -272,15 +245,12 @@ void core2Loop(void* pvParameters) {
       case addr:
         if (lastMenu != menu) {
           middleText(F("Address"));
-          delay(1000);
+          FastLED.clear();
+          FastLED.show();
         }
 
         middleText(String(address));
-        for (int i = 0; i < totalLEDs; i++) {
-          currentLED[i].setRGB(0, 0, 0);
-          // currentLED[i].setRGB(map(redPercentage, 0, 100, 0, 255), map(greenPercentage, 0, 100, 0, 255), map(bluePercentage, 0, 100, 0, 255));
-        }
-        FastLED.show();
+
         lastMenu = menu;
         break;
     }
@@ -289,61 +259,4 @@ void core2Loop(void* pvParameters) {
 }
 
 void loop() {
-}
-
-void manualMode() {
-  int lim = 250;
-  int potMax = 3500;
-  int red = 0;
-  int blue = 0;
-  int green = 0;
-  int redPercentage, greenPercentage, bluePercentage;
-
-  int redRaw = analogRead(redPot);
-  int greenRaw = analogRead(greenPot);
-  int blueRaw = analogRead(bluePot);
-
-  if (redRaw < lim) {
-    red = 0;
-  } else if (redRaw > potMax) {
-    red = potMax;
-  } else {
-    red = redRaw;
-  }
-
-  if (blueRaw < lim) {
-    blue = 0;
-  } else if (blueRaw > potMax) {
-    blue = potMax;
-  } else {
-    blue = blueRaw;
-  }
-
-  if (greenRaw < lim) {
-    green = 0;
-  } else if (greenRaw > potMax) {
-    green = potMax;
-  } else {
-    green = greenRaw;
-  }
-
-  redPercentage = map(red, 0, potMax, 0, 100);
-  greenPercentage = map(green, 0, potMax, 0, 100);
-  bluePercentage = map(blue, 0, potMax, 0, 100);
-
-  int finalRed = map(redPercentage, 0, 100, 0, 255);
-  int finalGreen = map(greenPercentage, 0, 100, 0, 255);
-  int finalBlue = map(bluePercentage, 0, 100, 0, 255);
-
-  // Serial << "Red: " << finalRed << " "
-  //        << "Green: " << finalGreen << " "
-  //        << "Blue: " << finalBlue << endl
-  //        << endl;
-
-  for (int i = 0; i < totalLEDs; i++) {
-    currentLED[i].setRGB(finalRed, finalGreen, finalBlue);
-    // currentLED[i].setRGB(map(redPercentage, 0, 100, 0, 255), map(greenPercentage, 0, 100, 0, 255), map(bluePercentage, 0, 100, 0, 255));
-  }
-
-  FastLED.show();
 }

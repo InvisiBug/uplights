@@ -1,11 +1,4 @@
 ////////////////////////////////////////////////////////////////////////
-//  Matthew Kavanagh
-//
-//  Nest
-//  MQTT.ino
-//  2017
-//  *********
-////////////////////////////////////////////////////////////////////////
 //
 //  #     #  #####  ####### #######
 //  ##   ## #     #    #       #
@@ -51,6 +44,7 @@ void handleMQTT() {
 void messageReceived(char* topic, byte* payload, unsigned int length) {
   printMessage(payload, length);
 
+  //* Only parse MQTT messages is the menu is set to remote
   if (menu == remote) {
     DynamicJsonDocument doc(5124);
 
