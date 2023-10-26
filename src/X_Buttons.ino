@@ -25,6 +25,14 @@ void startButtons() {
   acceptButton.setPressTicks(250);
 }
 
+void tickButtons() {
+  upButton.tick();
+  downButton.tick();
+  leftButton.tick();
+  rightButton.tick();
+  acceptButton.tick();
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 //  ######                                        #

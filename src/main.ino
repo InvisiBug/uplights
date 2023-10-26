@@ -33,7 +33,7 @@
 //  ######  ###### #      # #    # #   #   #  ####  #    #  ####
 //
 ////////////////////////////////////////////////////////////////////////
-#define totalLEDs 8
+#define totalLEDs 9
 // #define totalLEDs 60 // LEDs in the cloud
 
 #define LED_BUILTIN 2  // ESP32, nothing required for ESP8266
@@ -104,14 +104,13 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 ////////////////////////////////////////////////////////////////////////
 int LEDBrightness = 100;  // As a percentage (saved as a dynamic variable to let us change later)
 
-const char* wifiSsid = "I Don't Mind";
-const char* wifiPassword = "Have2Biscuits";
+const char* wifiSsid = "Uplights";
+const char* wifiPassword = "LetThereBeL1ght";
 
 const char* nodeName = "Uplight 1";
-
 const char* disconnectMsg = "Uplight 1 Disconnected";
 
-const char* mqttServerIP = "mqtt.kavanet.io";
+const char* mqttServerIP = "uplights.kavanet.io";
 
 // Wifi Params
 bool WiFiConnected = false;
@@ -211,11 +210,7 @@ void core1Loop(void* pvParameters) {
 void core2Loop(void* pvParameters) {
   for (;;) {
     yield();
-    upButton.tick();
-    downButton.tick();
-    leftButton.tick();
-    rightButton.tick();
-    acceptButton.tick();
+    tickButtons();
 
     switch (menu) {
       case manual:
@@ -245,6 +240,7 @@ void core2Loop(void* pvParameters) {
       case addr:
         if (lastMenu != menu) {
           middleText(F("Address"));
+          delay(500);
           FastLED.clear();
           FastLED.show();
         }

@@ -14,9 +14,9 @@ void manualMode() {
   bluePercentage = map(blue, 0, potMax, 0, 100);
 
   //* Convert to 0-255
-  int finalRed = map(redPercentage, 0, 100, 0, 255);
-  int finalGreen = map(greenPercentage, 0, 100, 0, 255);
-  int finalBlue = map(bluePercentage, 0, 100, 0, 255);
+  int finalRed = map(redPercentage, 0, 100, 255, 0);
+  int finalGreen = map(greenPercentage, 0, 100, 255, 0);
+  int finalBlue = map(bluePercentage, 0, 100, 255, 0);
 
   //* Set LEDs
   for (int i = 0; i < totalLEDs; i++) {
