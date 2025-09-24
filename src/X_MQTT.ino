@@ -62,6 +62,7 @@ void messageReceived(char* topic, byte* payload, unsigned int length) {
     int blue = root_0[2];
 
     for (int i = 0; i < totalLEDs; i++) {
+      Serial << "Setting LED " << i << " to " << red << " " << green << " " << blue << endl;
       currentLED[i].setRGB(red, green, blue);
     }
 

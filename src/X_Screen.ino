@@ -6,7 +6,7 @@ void startScreen() {
       delay(1000);
     }
   }
-  display.setRotation(2);
+  display.setRotation(0); // 2
 
   middleText(F("Uplight"));
 

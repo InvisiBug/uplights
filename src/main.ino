@@ -107,8 +107,8 @@ int LEDBrightness = 100;  // As a percentage (saved as a dynamic variable to let
 const char* wifiSsid = "Uplights";
 const char* wifiPassword = "LetThereBeL1ght";
 
-const char* nodeName = "Uplight 1";
-const char* disconnectMsg = "Uplight 1 Disconnected";
+const char* nodeName = "Uplight 3";
+const char* disconnectMsg = "Uplight 3 Disconnected";
 
 const char* mqttServerIP = "uplights.kavanet.io";
 
@@ -183,6 +183,7 @@ void setup() {
 
   Serial << "\n|** " << nodeName << " **|" << endl;
   delay(100);
+  menu = remote;
 }
 
 ///////////////////////////////////////////////////////////////////////
